@@ -17,3 +17,4 @@ except exceptions.CosmosHttpResponseError as e:
 except Exception as e:
     print(f"General Error: {str(e)}")
 
+#First commit
