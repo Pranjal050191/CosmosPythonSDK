@@ -59,6 +59,32 @@ try:
     #Update container to enable autoscale
     print(f"Container '{container.id}' updated with autoscale throughput enabled")
 
+    # Creating documents
+    documents = [
+        {
+            "id": "1",
+            "productName": "Laptop",
+            "categoryId": "Electronics",
+            "price": 1000
+        },
+        {
+            "id": "2",
+            "productName": "Smartphone",
+            "categoryId": "Electronics",
+            "price": 600
+        },
+        {
+            "id": "3",
+            "productName": "Coffee Maker",
+            "categoryId": "Home Appliances",
+            "price": 80
+        }
+    ]
+
+    for doc in documents:
+        container.create_item(body=doc)
+        print(f"Document with id {doc['id']} created successfully!")
+
 except exceptions.CosmosHttpResponseError as e:
     print(f"Cosmos DB Error: {e.message}")
 except Exception as e:
