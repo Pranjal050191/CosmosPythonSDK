@@ -79,19 +79,25 @@ try:
             "productName": "Coffee Maker",
             "categoryId": "Home Appliances",
             "price": 80
+        },
+        {
+            "id": "2",
+            "productName": "Smartphone in Home Appliances",
+            "categoryId": "Home Appliances",
+            "price": 18000
         }
     ]
 
     for doc in documents:
         # Query to check if a document with the same 'id' already exists
-        query = f"SELECT * FROM products p WHERE p.id = '{doc['id']}'"
+        query = f"SELECT * FROM products p WHERE p.id = '{doc['id']}' and p.categoryId = '{doc['categoryId']}'"
         existing_items = list(container.query_items(query=query, enable_cross_partition_query=True))
         if existing_items:
-            print(f"Document with id {doc['id']} already exists. Skipping insertion.")
+            print(f"Document with id {doc['id']} and partition key {doc['categoryId']} already exists. Skipping insertion.")
         else:
             # Insert the document if not already existing
             container.create_item(body=doc)
-            print(f"Document with id {doc['id']} created successfully!")
+            print(f"Document with id {doc['id']} and partition key {doc['categoryId']} created successfully!")
 
     # Query to get documents where categoryId is 'Electronics'
     query = "SELECT p.productName FROM products p WHERE p.categoryId = 'Electronics'"
@@ -135,7 +141,7 @@ try:
     print(existing_items)
 
     # Deleting the document
-    document_id = "6"
+    document_id = "1"
     partition_key_value = "Electronics"
     container.delete_item(item=document_id,partition_key=partition_key_value)
     print(f"Document with document_id : {document_id} deleted successfully")
