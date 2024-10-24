@@ -1,4 +1,5 @@
 import os
+from pydoc import Doc
 from azure.cosmos import CosmosClient, ThroughputProperties, database, exceptions
 from azure.cosmos.partition_key import PartitionKey
 
@@ -82,12 +83,69 @@ try:
     ]
 
     for doc in documents:
-        container.create_item(body=doc)
-        print(f"Document with id {doc['id']} created successfully!")
+        # Query to check if a document with the same 'id' already exists
+        query = f"SELECT * FROM products p WHERE p.id = '{doc['id']}'"
+        existing_items = list(container.query_items(query=query, enable_cross_partition_query=True))
+        if existing_items:
+            print(f"Document with id {doc['id']} already exists. Skipping insertion.")
+        else:
+            # Insert the document if not already existing
+            container.create_item(body=doc)
+            print(f"Document with id {doc['id']} created successfully!")
+
+    # Query to get documents where categoryId is 'Electronics'
+    query = "SELECT p.productName FROM products p WHERE p.categoryId = 'Electronics'"
+
+     # Execute the query
+    items = container.query_items(
+        query=query,
+        enable_cross_partition_query=True  # Enable cross-partition query if needed
+    )
+
+    # Print the result
+    print("Documents in category 'Electronics':")
+    for item in items:
+        print(item)
+
+    # Updating the document with productName = "Laptop"
+    productName = "Laptop"
+    
+    # Query the item to update
+    query = f"Select * from products p where p.productName = '{productName}'"
+    existing_items = list(container.query_items(query=query, enable_cross_partition_query=True))
+    print(existing_items)
+    if existing_items:
+            doc_to_update = existing_items[0] # 0 is to update only the first document.
+            # in order to update all documents iterate over the document.
+            # for doc_to_update in existing_items
+
+            # Modify the document fields
+            doc_to_update['price'] = 5000 # Updating the price
+            doc_to_update['productName'] = 'High end laptop' # Updating the laptop name
+
+            # Replace the existing document with updated one
+            container.replace_item(item=doc_to_update['id'],body=doc_to_update)
+            print(f"Document with id {doc_to_update['id']} updated successfully")
+    else:
+         print(f"Document with id productName = '{productName}' not found!")
+
+    # Query the updated item
+    query = f"Select * from products p where p.productName = 'High end laptop'"
+    existing_items = list(container.query_items(query=query, enable_cross_partition_query=True))
+    print(existing_items)
+
+    # Deleting the document
+    document_id = "6"
+    partition_key_value = "Electronics"
+    container.delete_item(item=document_id,partition_key=partition_key_value)
+    print(f"Document with document_id : {document_id} deleted successfully")
 
 except exceptions.CosmosHttpResponseError as e:
     print(f"Cosmos DB Error: {e.message}")
+except exceptions.CosmosResourceNotFoundError:
+    print(f"Document with ID {document_id} not found.")
 except Exception as e:
     print(f"General Error: {str(e)}")
+
 
 #First commit
