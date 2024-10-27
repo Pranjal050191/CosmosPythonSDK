@@ -13,6 +13,7 @@ key = "OQY7aYAH1hjjfOpWl6DJUlMzH2QtHPWvq4QuP0W5UByYfpWxcTcNfCxwFQfG90OIS36EPCQze
 client = CosmosClient(endpoint, key)
 
 try:
+    print("Executing old file")
     # Get database account properties
     account_properties = client.get_database_account()
     print("Account Endpoint:", account_properties.DatabasesLink)
@@ -38,21 +39,37 @@ try:
     print("Account Readable Endpoint:", readable_endpoint)
     
     # Creating database
-    #database = client.create_database_if_not_exists("cosmosworks")
+    database = client.create_database_if_not_exists(
+        id = "cosmosworks"
+        )
 
     # to get existing database
-    database = client.get_database_client("cosmosworks")
+    #database = client.get_database_client("cosmosworks")
     print("New Database ID: ", database.id)
 
-    #Creating Container with autoscale
-    #container = database.create_container_if_not_exists(
-    #    id="products"
-    #   ,partition_key=PartitionKey(path="/categoryId")
-    #   ,offer_throughput=1000 #This sets autoscale throughput (autoscaling between 100 - 1000 RU/s)
-    #)
+    # Define custom indexing policy
+    indexing_policy = {
+    "indexingMode": "consistent",  # Options: 'consistent', 'lazy', or 'none'
+    "automatic": True,  # Enables automatic indexing
+    "includedPaths": [
+        {"path": "/*"}
+        ,{"path": "/productName/?", "indexes": [{"kind": "Range", "dataType": "String"}]}
+        ,{"path": "/price/?", "indexes": [{"kind": "Range", "dataType": "Number"}]}
+    ],
+    "excludedPaths": [
+        {"path": "/\"_etag\"/?"}  # Excludes 'etag' from indexing
+    ]
+}
+
+    container = database.create_container_if_not_exists(
+        id="products"
+       ,partition_key=PartitionKey(path="/categoryId")
+       ,indexing_policy=indexing_policy
+       ,offer_throughput=1000 #This sets autoscale throughput (autoscaling between 100 - 1000 RU/s)
+    )
 
     #We can get container if it already exists
-    container = database.get_container_client("products")
+    #container = database.get_container_client("products")
 
     print("New container :",container.id)
 
