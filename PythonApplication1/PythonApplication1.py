@@ -1,3 +1,4 @@
+from gc import enable
 import os
 from pydoc import Doc
 from azure.cosmos import CosmosClient, ThroughputProperties, database, exceptions
@@ -8,6 +9,7 @@ endpoint = "https://cosmosdbact1018.documents.azure.com:443/"
 key = "OQY7aYAH1hjjfOpWl6DJUlMzH2QtHPWvq4QuP0W5UByYfpWxcTcNfCxwFQfG90OIS36EPCQze7CtACDbAdm5ag=="
 
 # Initialize the Cosmos client
+# This also automatically handles the bulk mode
 client = CosmosClient(endpoint, key)
 
 try:
@@ -25,37 +27,34 @@ try:
     if writable_locations:
         writable_region = writable_locations[0]['name']
         writable_endpoint = writable_locations[0]['databaseAccountEndpoint']
-
+    
     if readable_locations:
         readable_region = readable_locations[0]['name']
         readable_endpoint = readable_locations[0]['databaseAccountEndpoint']
-
+    
     print("Account Writable Region:", writable_region)
     print("Account Writable Endpoint:", writable_endpoint)
     print("Account Readable Region:", readable_region)
     print("Account Readable Endpoint:", readable_endpoint)
     
     # Creating database
-    database = client.create_database_if_not_exists("cosmosworks")
+    #database = client.create_database_if_not_exists("cosmosworks")
+
+    # to get existing database
+    database = client.get_database_client("cosmosworks")
     print("New Database ID: ", database.id)
 
     #Creating Container with autoscale
-    container = database.create_container_if_not_exists(
-        id="products"
-       ,partition_key=PartitionKey(path="/categoryId")
-       ,offer_throughput=1000 #This sets autoscale throughput (autoscaling between 100 - 1000 RU/s)
-    )
+    #container = database.create_container_if_not_exists(
+    #    id="products"
+    #   ,partition_key=PartitionKey(path="/categoryId")
+    #   ,offer_throughput=1000 #This sets autoscale throughput (autoscaling between 100 - 1000 RU/s)
+    #)
+
+    #We can get container if it already exists
+    container = database.get_container_client("products")
 
     print("New container :",container.id)
-
-    #Setting autoscale throughput using dictionary
-    #throughput_settings = {
-    #    "resource":{
-    #        "resourceId": container.id
-    #        ,"maxThroughput": 4000
-    #        ,"isAutoscaleEnabled" : True
-    #        }
-    #    }
 
     #Update container to enable autoscale
     print(f"Container '{container.id}' updated with autoscale throughput enabled")
@@ -66,13 +65,13 @@ try:
             "id": "1",
             "productName": "Laptop",
             "categoryId": "Electronics",
-            "price": 1000
+            "price": [600,800,1000]
         },
         {
             "id": "2",
             "productName": "Smartphone",
             "categoryId": "Electronics",
-            "price": 600
+            "price": [600,800,1000]
         },
         {
             "id": "3",
@@ -88,6 +87,7 @@ try:
         }
     ]
 
+    # Inserting records
     for doc in documents:
         # Query to check if a document with the same 'id' already exists
         query = f"SELECT * FROM products p WHERE p.id = '{doc['id']}' and p.categoryId = '{doc['categoryId']}'"
@@ -99,8 +99,21 @@ try:
             container.create_item(body=doc)
             print(f"Document with id {doc['id']} and partition key {doc['categoryId']} created successfully!")
 
+
+    # Prepare documents to insert in bulk
+    documents = [
+    {"id": str(i), "productName": f"Product {i}", "categoryId": "Electronics", "price": 100 + i}
+    for i in range(4, 1001)  # Insert 1000 items
+    ]
+
+    # Perform bulk insert
+    for doc in documents:
+        container.upsert_item(doc)
+
+    print('Bulk insert completed !')
+
     # Query to get documents where categoryId is 'Electronics'
-    query = "SELECT p.productName FROM products p WHERE p.categoryId = 'Electronics'"
+    query = "SELECT p.productName FROM products p WHERE p.categoryId = 'Home Appliances'"
 
      # Execute the query
     items = container.query_items(
@@ -141,7 +154,7 @@ try:
     print(existing_items)
 
     # Deleting the document
-    document_id = "1"
+    document_id = "2"
     partition_key_value = "Electronics"
     container.delete_item(item=document_id,partition_key=partition_key_value)
     print(f"Document with document_id : {document_id} deleted successfully")
